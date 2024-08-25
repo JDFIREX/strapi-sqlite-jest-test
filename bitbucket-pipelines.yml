@@ -1,0 +1,16 @@
+pipelines:
+  branches:
+    "{feature/*,SDI-*,master,dev,local-dev,test}":
+      - step:
+          name: Test Application
+          image: node:16.16.0-alpine3.16
+          caches:
+            - node
+          script:
+            - apk add --no-cache python3 make g++
+            - mv .env.poc .env
+            - npm install -g node-gyp
+            - npm install
+            - npm run build
+            - npm run test:install
+            - npm run test

@@ -1,0 +1,23 @@
+{
+  "kind": "collectionType",
+  "collectionName": "factories",
+  "info": {
+    "singularName": "factory",
+    "pluralName": "factories",
+    "displayName": "Zakłady"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "versions": {
+      "versioned": false
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "regex": "^[^|*?<>\\\"\\\\\\\\/\\[\\]:\\r\\n]*$"
+    }
+  }
+}

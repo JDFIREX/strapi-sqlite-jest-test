@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "internal_regulations",
+  "info": {
+    "singularName": "internal-regulation",
+    "pluralName": "internal-regulations",
+    "displayName": "Regulacje wewnętrzne",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "holdingCompany": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::holding-company.holding-company",
+      "inversedBy": "internalRegulation"
+    },
+    "folderId": {
+      "type": "integer",
+      "private": true
+    }
+  },
+  "config": {
+    "attributes": {
+      "folderId": {
+        "hidden": false
+      }
+    }
+  }
+}

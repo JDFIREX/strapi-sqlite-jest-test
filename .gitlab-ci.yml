@@ -1,0 +1,55 @@
+stages:
+  - test
+  - build
+
+default:
+  tags:
+      - devapo
+      - docker
+      - non-prod
+
+workflow:
+  rules:
+    - if: ($CI_COMMIT_REF_SLUG == "master" || $CI_COMMIT_REF_SLUG == "test" || $CI_COMMIT_REF_SLUG =~ /release.*/ || $CI_COMMIT_REF_SLUG == "dev" )
+
+npm-build:
+  image: node:16.16.0-alpine3.16
+  stage: test
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+  script:
+    - npm install
+    - npm run build
+
+docker-build:
+  image: docker:24.0.5
+  stage: build
+  variables:
+    DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH
+  script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - docker build -t "$DOCKER_IMAGE_NAME" -f prod.Dockerfile .
+    - docker push "$DOCKER_IMAGE_NAME"
+    - docker image rm "$DOCKER_IMAGE_NAME"
+
+docker-tag-postgres:
+  image: docker:24.0.5
+  stage: build
+  variables:
+    DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE/postgres:13
+    POSTGRES_DOCKER_TAG: postgres:13
+  script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - IS_PRESENT=$(docker manifest inspect "$DOCKER_IMAGE_NAME" > /dev/null ; echo $? || true)
+    - |
+      if [[ $IS_PRESENT = 1 ]]; then
+        docker pull "$POSTGRES_DOCKER_TAG"
+        docker tag "$POSTGRES_DOCKER_TAG" "$DOCKER_IMAGE_NAME"
+        docker push "$DOCKER_IMAGE_NAME"
+        docker image rm "$DOCKER_IMAGE_NAME"
+        docker image rm "$POSTGRES_DOCKER_TAG"
+      fi

@@ -1,0 +1,42 @@
+version: "3"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    container_name: intranet-strapi
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./config:/opt/app/config
+      - ./public:/opt/app/public
+      - ./providers:/opt/app/providers
+      - ./src:/opt/app/src
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - intranet
+
+  db:
+    image: postgres:13
+    container_name: intranet-strapi-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - intranet-strapi-pg-data:/var/lib/postgresql/data
+    networks:
+      - intranet
+
+volumes:
+  intranet-strapi-pg-data:
+
+networks:
+  intranet:
+    driver: bridge

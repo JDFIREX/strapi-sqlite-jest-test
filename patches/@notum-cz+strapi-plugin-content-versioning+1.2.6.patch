@@ -1,0 +1,228 @@
+diff --git a/node_modules/@notum-cz/strapi-plugin-content-versioning/admin/src/components/Versions/index.js b/node_modules/@notum-cz/strapi-plugin-content-versioning/admin/src/components/Versions/index.js
+index 232038e..a8ffeba 100644
+--- a/node_modules/@notum-cz/strapi-plugin-content-versioning/admin/src/components/Versions/index.js
++++ b/node_modules/@notum-cz/strapi-plugin-content-versioning/admin/src/components/Versions/index.js
+@@ -9,6 +9,7 @@ import { useHistory, useLocation } from "react-router-dom";
+ // import { TableLabel } from "@strapi/design-system/Text";
+ import { Checkbox } from "@strapi/design-system/Checkbox";
+ import { Option, Select } from "@strapi/design-system/Select";
++import { cleanData } from "@strapi/admin/admin/src/content-manager/components/EditViewDataManagerProvider/utils";
+ import { Textarea } from "@strapi/design-system/Textarea";
+ import { Typography } from "@strapi/design-system/Typography";
+ 
+@@ -34,8 +35,11 @@ const Versions = () => {
+     layout,
+     isDuplicatingEntry,
+     onChange,
++    allLayoutData
+   } = useCMEditViewDataManager();
+ 
++  const currentContentTypeLayout = _.get(allLayoutData, ['contentType'], {});
++
+   const { put } = useFetchClient();
+ 
+   if (!_.get(layout, "pluginOptions.versions.versioned", false)) {
+@@ -120,11 +124,30 @@ const Versions = () => {
+     [data, push, slug]
+   );
+ 
++  const createFormData = useCallback(
++    (modifiedData, initialData) => {
++      // Then we need to apply our helper
++      const cleanedData = cleanData(
++        { browserState: modifiedData, serverState: initialData },
++        currentContentTypeLayout,
++        allLayoutData.components
++      );
++
++      return cleanedData;
++    },
++    [allLayoutData.components, currentContentTypeLayout]
++  );
++
+   const handleUpdateShowedVersion = () => {
++    const formData = createFormData(modifiedData, initialData);
+     put(
+       `/content-versioning/${slug}/${initialData.id}/update-version`,
+-      modifiedData
+-    );
++      formData
++    ).then((response) => {
++      setTimeout(() => {
++        window.location.reload();
++      }, 250);
++    });
+   };
+ 
+   return (
+diff --git a/node_modules/@notum-cz/strapi-plugin-content-versioning/server/controllers/admin.js b/node_modules/@notum-cz/strapi-plugin-content-versioning/server/controllers/admin.js
+index 29f8d70..0a2394c 100644
+--- a/node_modules/@notum-cz/strapi-plugin-content-versioning/server/controllers/admin.js
++++ b/node_modules/@notum-cz/strapi-plugin-content-versioning/server/controllers/admin.js
+@@ -2,7 +2,7 @@
+ 
+ const { v4: uuid } = require("uuid");
+ const { getService } = require("../utils");
+-const { pick } = require("lodash");
++const _ = require("lodash");
+ 
+ module.exports = {
+   async save(ctx) {
+@@ -39,7 +39,6 @@ module.exports = {
+       }
+       return initialCloneVersion;
+     }
+-
+     return await createVersion(slug, data, user, ctx.request.query);
+   },
+   async updateVersion(ctx) {
+@@ -65,12 +64,18 @@ module.exports = {
+         ].includes(key)
+     );
+ 
+-    const updateData = pick(data, updatableKeys);
++    const updateData = _.pick(data, updatableKeys);
++    const updatedVersion = await strapi.entityService.update(
++      slug,
++      parseInt(id),
++      {
++        where: { id: parseInt(id) },
++        data: updateData,
++        populate: updatableKeys,
++        withoutDecorator: true
++      }
++    )
+ 
+-    const updatedVersion = await strapi.db.query(slug).update({
+-      where: { id },
+-      data: updateData,
+-    });
+     return updatedVersion;
+   },
+ };
+diff --git a/node_modules/@notum-cz/strapi-plugin-content-versioning/server/middlewares/relationUpdate.js b/node_modules/@notum-cz/strapi-plugin-content-versioning/server/middlewares/relationUpdate.js
+index 5e0550f..4468269 100644
+--- a/node_modules/@notum-cz/strapi-plugin-content-versioning/server/middlewares/relationUpdate.js
++++ b/node_modules/@notum-cz/strapi-plugin-content-versioning/server/middlewares/relationUpdate.js
+@@ -94,7 +94,7 @@ function findAndUpdateRelations(allVersionIdsNumbers, id, entry, modelDef) {
+     }
+ 
+     //update all content types to the latest published version
+-    filteredResults.forEach(async (result) => {
++    for (const result of filteredResults) {
+       await strapi.db.query(component.key).update({
+         where: {
+           id: result.id,
+@@ -106,7 +106,7 @@ function findAndUpdateRelations(allVersionIdsNumbers, id, entry, modelDef) {
+           allVersionIdsNumbers
+         ),
+       });
+-    });
++    }
+   };
+ }
+ 
+@@ -142,7 +142,8 @@ function generateUpdateData(result, attributes, id, allIds) {
+         .filter((resultId) => resultId !== id)
+         .filter((resultId) => allIds.includes(resultId));
+       updateData[attr.name] = {
+-        disconnect: otherVersionsOfEntry,
++        disconnect:
++          attr.relationType === "manyToMany" ? [] : otherVersionsOfEntry,
+         connect: otherVersionsOfEntry.length ? [id] : [],
+       };
+     } else if (resultAttribute && typeof resultAttribute === "object") {
+diff --git a/node_modules/@notum-cz/strapi-plugin-content-versioning/server/services/entity-service-decorator.js b/node_modules/@notum-cz/strapi-plugin-content-versioning/server/services/entity-service-decorator.js
+index 063e483..a38a282 100644
+--- a/node_modules/@notum-cz/strapi-plugin-content-versioning/server/services/entity-service-decorator.js
++++ b/node_modules/@notum-cz/strapi-plugin-content-versioning/server/services/entity-service-decorator.js
+@@ -11,6 +11,7 @@ const { getLatestValueByDB } = require("../utils");
+ 
+ const VERSIONS_QUERY_FILTER = "versions";
+ 
++
+ // TODO: Test query efficiency for larger datasets
+ const findLatestInLocale = async (model, fields) => {
+   const where = ["vuid=a.vuid"];
+@@ -99,7 +100,7 @@ const decorator = (service) => ({
+     if (!isVersionedContentType(model)) {
+       return service.create.call(this, uid, opts);
+     }
+-    if (isLocalized && data.localizations.length) {
++    if (isLocalized && data.localizations?.length) {
+       const relatedLocaleItem = await strapi.db.query(uid).findOne({
+         where: {
+           id: data.localizations[0],
+@@ -128,15 +129,18 @@ const decorator = (service) => ({
+     const { isVersionedContentType, createNewVersion } =
+       getService("content-types");
+     const model = strapi.getModel(uid);
+-    const { data } = opts;
++    const { data, withoutDecorator } = opts;
++
++    if(withoutDecorator) {
++      return service.update.call(this, uid, entityId, opts);
++    }
++
+     const isLocalized = isLocalizedContentType(model);
+     const attrName = _.snakeCase(model.info.singularName);
+     const collectionName = _.snakeCase(model.collectionName);
+-    const prevVersion = await strapi.db.query(uid).findOne({
+-      where: {
+-        id: entityId,
+-      },
+-    });
++    const prevVersion = await strapi.entityService.findOne(uid, entityId, {
++      populate: "*"
++    })
+ 
+     if (!isVersionedContentType(model) || data.hasOwnProperty("publishedAt")) {
+       //Is not versioned content or is just publishing/unpublishing
+@@ -287,11 +291,45 @@ const decorator = (service) => ({
+     // remove old ids
+     const newData = await createNewVersion(uid, data, model);
+ 
++    for( const key in model.attributes) {
++      if(model.attributes[key].type !== "component") continue
++      if(!newData[key]) continue
++      if(!_.isObject(newData[key])) continue
++
++      const componentId = prevVersion[key]?.id
++      if(!componentId) continue
++
++      const componentModel = strapi.getModel(model.attributes[key].component)
++      let componentDB = await strapi.db.query(model.attributes[key].component).findOne({
++        where: { id: componentId },
++        populate: Object.keys(componentModel.attributes).filter(key => ["relation"].includes(componentModel.attributes[key].type))
++      })
++
++      Object.keys(componentDB).forEach(ckey => {
++        if(componentModel.attributes[ckey]?.type !== "relation") return
++        if(!componentDB[ckey]) return
++        if(!newData[key]?.[ckey]) return
++        if(_.isArray(componentDB[ckey])) {
++          newData[key][ckey].connect = [
++            ...componentDB[ckey],
++            ...newData[key][ckey].connect,
++          ].filter((item) => {
++            if(!newData[key][ckey].disconnect) return true
++            return !newData[key][ckey].disconnect.map((x) => x.id).includes(item.id)
++          })
++        }
++      })
++    }
++
+     // Create Version
+     const result = await service.create.call(this, uid, {
+       ...opts,
+-      data: newData,
+-    });
++      data: {
++        ...newData,
++        publishedAt: null,
++      },
++    })
++
+     // Relink all versions from other locales if result is The latest(published)!
+     if (result.isVisibleInListView && isLocalized) {
+       // !set the current as latest in locale

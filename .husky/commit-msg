@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+INPUT_FILE=$1
+START_LINE=`head -n1 $INPUT_FILE`
+PATTERN="^[[A-Z]+-[0-9]+]\s[A-Z].*$"
+
+RED_COLOR='\033[0;31m'
+BLUE_COLOR='\033[0;34m'
+RESET_COLOR='\033[0m'
+
+  if ! echo "$START_LINE" | grep -Eqe "$PATTERN"; then
+    echo "${RED_COLOR}ERROR: Bad commit message${RESET_COLOR} 🥲"
+    echo "${BLUE_COLOR}INFO: Take a look at this example:${RESET_COLOR} [SUP-123] Commit message"
+    echo "Errored message: "
+    echo $START_LINE
+    exit 1
+  fi

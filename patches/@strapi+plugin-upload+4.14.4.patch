@@ -1,0 +1,17 @@
+diff --git a/node_modules/@strapi/plugin-upload/admin/src/components/EditAssetDialog/PreviewBox/index.js b/node_modules/@strapi/plugin-upload/admin/src/components/EditAssetDialog/PreviewBox/index.js
+index 5a55401..0d3b747 100644
+--- a/node_modules/@strapi/plugin-upload/admin/src/components/EditAssetDialog/PreviewBox/index.js
++++ b/node_modules/@strapi/plugin-upload/admin/src/components/EditAssetDialog/PreviewBox/index.js
+@@ -76,6 +76,12 @@ export const PreviewBox = ({
+     }
+   }, [replacementFile, asset]);
+ 
++  useEffect(() => {
++    if (hasCropIntent === true) {
++      setIsCropImageReady(true);
++    }
++  }, [hasCropIntent]);
++
+   useEffect(() => {
+     if (hasCropIntent === false) {
+       stopCropping();

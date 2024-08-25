@@ -1,0 +1,71 @@
+diff --git a/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/RelationInput.js b/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/RelationInput.js
+index afa4157..f5ebdef 100644
+--- a/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/RelationInput.js
++++ b/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/RelationInput.js
+@@ -159,7 +159,7 @@ const RelationInput = ({
+ 
+   const handleMenuOpen = (isOpen) => {
+     if (isOpen) {
+-      onSearch();
++      onSearch(textValue);
+     }
+   };
+ 
+@@ -218,10 +218,10 @@ const RelationInput = ({
+       wrap="wrap"
+     >
+       <Flex direction="row" alignItems="end" justifyContent="end" gap={2} width="100%">
+-        <ComboboxWrapper marginRight="auto" maxWidth={size <= 6 ? '100%' : '70%'} width="100%">
++        <ComboboxWrapper marginRight="auto" maxWidth="100%" width="100%">
+           <Combobox
+             ref={fieldRef}
+-            autocomplete="list"
++            autocomplete="none"
+             error={error}
+             name={name}
+             hint={description}
+@@ -452,7 +452,7 @@ const ListItem = ({ data, index, style }) => {
+           {href ? (
+             <LinkEllipsis to={href}>{mainField ?? id}</LinkEllipsis>
+           ) : (
+-            <Typography textColor={disabled ? 'neutral600' : 'primary600'} ellipsis>
++            <Typography textColor={disabled ? 'neutral600' : 'primary600'}>
+               {mainField ?? id}
+             </Typography>
+           )}
+diff --git a/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/components/Option.js b/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/components/Option.js
+index e13dcdf..f196e0a 100644
+--- a/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/components/Option.js
++++ b/node_modules/@strapi/admin/admin/src/content-manager/components/RelationInput/components/Option.js
+@@ -38,15 +38,15 @@ export const Option = ({ publicationState, mainField, id }) => {
+       <ComboboxOption value={id} textValue={stringifiedDisplayValue}>
+         <Flex>
+           <StyledBullet title={title} isDraft={isDraft} />
+-          <Typography ellipsis>{stringifiedDisplayValue}</Typography>
++          <Typography title={stringifiedDisplayValue}>{stringifiedDisplayValue}</Typography>
+         </Flex>
+       </ComboboxOption>
+     );
+   }
+ 
+   return (
+-    <ComboboxOption value={id} textValue={stringifiedDisplayValue}>
+-      {stringifiedDisplayValue}
++    <ComboboxOption value={id} title={stringifiedDisplayValue} textValue={stringifiedDisplayValue}>
++      <Typography title={stringifiedDisplayValue}>{stringifiedDisplayValue}</Typography>
+     </ComboboxOption>
+   );
+ };
+diff --git a/node_modules/@strapi/admin/admin/src/content-manager/hooks/useRelation/useRelation.js b/node_modules/@strapi/admin/admin/src/content-manager/hooks/useRelation/useRelation.js
+index 4a75e93..ca66496 100644
+--- a/node_modules/@strapi/admin/admin/src/content-manager/hooks/useRelation/useRelation.js
++++ b/node_modules/@strapi/admin/admin/src/content-manager/hooks/useRelation/useRelation.js
+@@ -166,7 +166,7 @@ export const useRelation = (cacheKey, { relation, search }) => {
+     setSearchParams({
+       ...options,
+       _q: term,
+-      _filter: '$startsWithi',
++      _filter: '$containsi',
+     });
+   };
+ 

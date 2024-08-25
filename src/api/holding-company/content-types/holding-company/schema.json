@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "holding_companies",
+  "info": {
+    "singularName": "holding-company",
+    "pluralName": "holding-companies",
+    "displayName": "Grupa kapitałowa",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "versions": {
+      "versioned": false
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "unique": true
+    },
+    "externalId": {
+      "type": "biginteger"
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": ["images"]
+    },
+    "internalRegulation": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::internal-regulation.internal-regulation",
+      "mappedBy": "holdingCompany"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "documents",
+  "info": {
+    "singularName": "document",
+    "pluralName": "documents",
+    "displayName": "Dokumenty",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "versions": {
+      "versioned": true
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "unique": false,
+      "regex": "^[^|*?<>\\\"\\\\\\\\/\\[\\]:\\r\\n]*$"
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["files", "images"]
+    },
+    "documentLinks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::document.document"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "Zarządzenie",
+        "Dokument",
+        "Procedura",
+        "Regulamin",
+        "Kodeks",
+        "Instrukcje",
+        "Karta Procesu",
+        "Rejestr"
+      ],
+      "required": true,
+      "default": "Dokument"
+    },
+    "folderId": {
+      "type": "integer",
+      "private": true
+    },
+    "startDate": {
+      "type": "date",
+      "required": true
+    },
+    "regulation": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": ["files"]
+    },
+    "archiveDate": {
+      "type": "date"
+    }
+  },
+  "config": {
+    "attributes": {
+      "folderId": {
+        "hidden": true
+      }
+    }
+  }
+}
